@@ -1,5 +1,5 @@
 // pdf-encrypt.js — Pure Binary PDF Encryption (RC4 128-bit)
-// Menjamin integritas byte biner agar tidak terjadi "PDF Blank".
+// Menghitung ulang startxref agar PDF tidak corrupted.
 
 const PDF_PAD = new Uint8Array([
   0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41,
@@ -8,7 +8,6 @@ const PDF_PAD = new Uint8Array([
   0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A
 ]);
 
-// --- MD5 & RC4 Core ---
 function md5(input) {
   const bytes = input;
   const len8 = bytes.length;
@@ -67,7 +66,6 @@ function rc4(key, data) {
   return out;
 }
 
-// --- Binary Helpers ---
 const bytesToHex = b => Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
 const concat = (...arrs) => {
   const total = arrs.reduce((s, a) => s + a.length, 0);
@@ -83,7 +81,6 @@ const padPw = pw => {
   return r;
 };
 
-// --- Main Encryption Logic ---
 async function encryptPDF(pdfBytes, userPassword, ownerPassword) {
   const userPw = userPassword || "";
   const ownerPw = ownerPassword || userPw;
@@ -121,65 +118,56 @@ async function encryptPDF(pdfBytes, userPassword, ownerPassword) {
   const latin1 = new TextDecoder('latin1');
   const pdfStr = latin1.decode(pdfBytes);
   
-  // Scaning objek menggunakan Regex tapi HANYA untuk mencari offset.
-  // Data aslinya tetap diambil dari Uint8Array awal.
+  // Suntikkan Objek Enkripsi
+  const encryptObjNum = (pdfStr.match(/\d+ \d+ obj/g) || []).length + 1;
+  const encryptDict = `<< /Filter /Standard /V 2 /R 3 /Length 128 /P ${perm} /O <${bytesToHex(oValue).toUpperCase()}> /U <${bytesToHex(uValue.slice(0,16)).toUpperCase()}${bytesToHex(new Uint8Array(16)).toUpperCase()}> >>`;
+  const encryptObj = `\n${encryptObjNum} 0 obj\n${encryptDict}\nendobj\n`;
+  
+  // Sisipkan objek enkripsi SEBELUM xref
+  const xrefIndex = pdfStr.indexOf('xref');
+  if (xrefIndex === -1) return pdfBytes;
+
+  let modifiedPdfStr = pdfStr.substring(0, xrefIndex) + encryptObj + pdfStr.substring(xrefIndex);
+  
+  // Update Trailer
+  const encryptObjRef = `${encryptObjNum} 0 R`;
+  const idStr = `<${fileIdHex}><${fileIdHex}>`;
+  
+  modifiedPdfStr = modifiedPdfStr.replace(/trailer\s*<<([\s\S]*?)>>/g, (m, inner) => {
+    let updated = inner.replace(/\/Encrypt\s+[^\n/]+/g, '').replace(/\/ID\s+\[[\s\S]*?\]/g, '');
+    return `trailer <<${updated} /Encrypt ${encryptObjRef} /ID [${idStr}] >>`;
+  });
+
+  // PENTING: Update startxref
+  // Karena kita menyisipkan 'encryptObj' SEBELUM xref, maka posisi xref bergeser.
+  const encryptObjBytes = new TextEncoder().encode(encryptObj).length;
+  modifiedPdfStr = modifiedPdfStr.replace(/startxref\s+(\d+)/g, (m, offset) => {
+    return `startxref\n${parseInt(offset) + encryptObjBytes}`;
+  });
+
+  const finalPdf = new Uint8Array(Array.from(modifiedPdfStr).map(c => c.charCodeAt(0)));
+
+  // ENKRIPSI STREAM (Selective)
   const objRegex = /(\d+)\s+(\d+)\s+obj[\s\S]*?stream([\r\n]+)/g;
   let match;
-  const finalPdf = new Uint8Array(pdfBytes);
-
-  while ((match = objRegex.exec(pdfStr)) !== null) {
+  while ((match = objRegex.exec(modifiedPdfStr)) !== null) {
     const objNum = parseInt(match[1]);
     const genNum = parseInt(match[2]);
-    const dict = match[0]; // Header objek termasuk dictionary
+    const dict = match[0];
     const streamStart = match.index + match[0].length;
-    
-    // TEMUKAN akhir stream
-    const streamEnd = pdfStr.indexOf('endstream', streamStart);
+    const streamEnd = modifiedPdfStr.indexOf('endstream', streamStart);
     if (streamEnd === -1) continue;
 
-    // --- LOGIKA SELEKTIF ---
-    // Jangan enkripsi jika ini adalah objek kritis (Font, Metadata, Catalog)
-    // Objek kritis biasanya mengandung /Type /Font, /Type /Metadata, atau /Type /Pages
-    if (dict.includes('/Type /Font') || 
-        dict.includes('/Type/Font') || 
-        dict.includes('/Type /Metadata') || 
-        dict.includes('/Type /Catalog') ||
-        dict.includes('/Type /Pages')) {
-      console.log(`[DEBUG] Skipping encryption for system object ${objNum}`);
+    if (dict.includes('/Type /Font') || dict.includes('/Type /Metadata') || dict.includes('/Type /Catalog') || dict.includes('/Type /Pages')) {
       continue;
     }
 
-    console.log(`[DEBUG] Encrypting content stream for object ${objNum}`);
-    // Ambil data stream asli dari Uint8Array (Biner Murni)
-    const rawStream = pdfBytes.slice(streamStart, streamEnd);
-
-    // Hitung Object Key
+    const rawStream = finalPdf.slice(streamStart, streamEnd);
     const extra = new Uint8Array([objNum & 0xff, (objNum>>8) & 0xff, (objNum>>16) & 0xff, genNum & 0xff, (genNum>>8) & 0xff]);
     const objKey = md5(concat(encKey, extra)).slice(0, Math.min(encKey.length + 5, 16));
-
-    // Enkripsi
     const encrypted = rc4(objKey, rawStream);
-    
-    // Tulis kembali ke finalPdf (In-place)
     finalPdf.set(encrypted, streamStart);
   }
 
-  // 5. Update Trailer (Dictionary update tetap aman via string replace karena biasanya hanya teks ASCII)
-  const finalStr = latin1.decode(finalPdf);
-  const encryptDict = `<< /Filter /Standard /V 2 /R 3 /Length 128 /P ${perm} /O <${bytesToHex(oValue).toUpperCase()}> /U <${bytesToHex(uValue.slice(0,16)).toUpperCase()}${bytesToHex(new Uint8Array(16)).toUpperCase()}> >>`;
-  
-  let resultStr = finalStr;
-  if (finalStr.includes('trailer')) {
-    resultStr = finalStr.replace(/trailer\s*<<([\s\S]*?)>>/g, (m, inner) => {
-      let updated = inner.replace(/\/Encrypt\s+[^\n/]+/g, '').replace(/\/ID\s+\[[\s\S]*?\]/g, '');
-      return `trailer <<${updated} /Encrypt ${encryptDict} /ID [<${fileIdHex}><${fileIdHex}>] >>`;
-    });
-  } else {
-    resultStr = finalStr.replace(/<<([\s\S]*?)>>\s+%%EOF/g, (m, inner) => {
-      let updated = inner.replace(/\/Encrypt\s+[^\n/]+/g, '').replace(/\/ID\s+\[[\s\S]*?\]/g, '');
-      return `<<${updated} /Encrypt ${encryptDict} /ID [<${fileIdHex}><${fileIdHex}>] >> %%EOF`;
-    });
-  }
-
-  return new Uint8Array(Array.from(resultStr).map(c => c.charCodeAt(0)));
+  return finalPdf;
 }

@@ -191,18 +191,8 @@ async function previewEmployeePDF(index) {
     
     let finalBytes;
     if (useEncryption) {
-      console.log("[DEBUG] Step 1: Normalizing PDF Structure...");
-      let normalizedBytes;
-      try {
-        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-        normalizedBytes = await pdfDoc.save(); // File sekarang punya XRef dan ID yang rapi
-      } catch (err) {
-        console.warn("[DEBUG] Normalization failed, using raw jsPDF bytes:", err);
-        normalizedBytes = new Uint8Array(pdfBytes);
-      }
-
-      console.log("[DEBUG] Step 2: Encrypting Normalized PDF...");
-      finalBytes = await encryptPDF(normalizedBytes, password, password);
+      console.log("[DEBUG] Encrypting PDF with Byte-Offset Correction...");
+      finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
       console.log("[DEBUG] Encryption complete.");
     } else {
       console.log("[DEBUG] Skipping Encryption for testing...");
@@ -279,19 +269,9 @@ async function startGenerate() {
       // 1. Generate PDF
       const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
 
-      // 1. Normalize Structure (Fix XRef & ID before encryption)
-      let normalizedBytes;
-      try {
-        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-        normalizedBytes = await pdfDoc.save();
-      } catch (e) {
-        console.warn("Normalization failed for " + emp.nama, e);
-        normalizedBytes = new Uint8Array(pdfBytes);
-      }
-
-      // 2. Encrypt Normalized PDF
+      // 2. Encrypt PDF
       const password = getPasswordForEmployee(emp);
-      const finalBytes = await encryptPDF(normalizedBytes, password, password);
+      const finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
 
       // 3. Add to ZIP
       const fileName = sanitizeFilename(`SlipGaji_${emp.nama}_${periodeSlug}.pdf`);
