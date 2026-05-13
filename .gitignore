@@ -1,0 +1,31 @@
+# IDE & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Antigravity / Gemini AI Files
+.gemini/
+.antigravity/
+.agent/
+brain/
+artifacts/
+scratch/
+
+# Node dependencies
+node_modules/
+package-lock.json
+
+# Production / Temp
+dist/
+build/
+temp/
+*.tmp
+*.log
+
+# Project specific samples (Jangan push data asli perusahaan)
+*.xlsx
+*.xls
+*.pdf
+*.zip

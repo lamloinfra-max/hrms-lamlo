@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slip Gaji Generator — PT. Lamlo Pharmacy</title>
+  <meta name="description" content="Generator slip gaji PDF ter-enkripsi untuk PT. Lamlo Pharmacy. Upload Excel, pilih periode, generate & download.">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- CDN Libraries -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="container">
+      <div class="header-brand">
+        <img src="logo.png" alt="Logo PT. Lamlo Pharmacy" class="header-logo">
+        <div class="header-text">
+          <h1>Slip Gaji Generator</h1>
+          <p>PT. Lamlo Pharmacy</p>
+        </div>
+      </div>
+      <div>
+        <span class="badge-secure">🔒 Data tidak keluar dari browser</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="main-content">
+    <div class="container">
+
+      <!-- Stepper -->
+      <div class="stepper" id="stepper">
+        <div class="step active" data-step="1">
+          <div class="step-icon">📁</div>
+          <div class="step-info">
+            <span class="step-number">01</span>
+            <span class="step-label">Upload Excel</span>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" data-step="2">
+          <div class="step-icon">📅</div>
+          <div class="step-info">
+            <span class="step-number">02</span>
+            <span class="step-label">Pilih Periode</span>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" data-step="3">
+          <div class="step-icon">👁️</div>
+          <div class="step-info">
+            <span class="step-number">03</span>
+            <span class="step-label">Preview & Validasi</span>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" data-step="4">
+          <div class="step-icon">⚡</div>
+          <div class="step-info">
+            <span class="step-number">04</span>
+            <span class="step-label">Generate & Download</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 1: Upload ──────────────────────────────────────────────── -->
+      <section class="step-panel active" id="panel-1">
+        <div class="panel-header">
+          <h2>📁 Upload File Excel</h2>
+          <p>Upload file Excel yang berisi data slip gaji. Pastikan file memiliki sheet bernama <code>TEMPLATE</code> sesuai format yang sudah ditentukan.</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+          <span class="upload-icon">📊</span>
+          <h3>Drag & Drop file Excel di sini</h3>
+          <p>atau</p>
+          <label class="btn btn-primary" for="fileInput" style="cursor:pointer;">
+            📂 Browse File
+          </label>
+          <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+          <p class="upload-hint">Format: .xlsx · Maks 10MB · Sheet: TEMPLATE</p>
+        </div>
+
+        <div class="file-info hidden" id="fileInfo">
+          <div class="file-info-icon">📄</div>
+          <div class="file-info-details">
+            <div class="file-name" id="fileName">-</div>
+            <div class="file-meta" id="fileMeta">-</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="clearFile">✕ Ganti File</button>
+        </div>
+
+        <div class="nav-row">
+          <span class="text-muted">Upload file Excel untuk melanjutkan</span>
+          <button class="btn btn-primary btn-lg nav-row-right" id="btn-next-1" disabled>
+            Lanjut — Pilih Periode →
+          </button>
+        </div>
+      </section>
+
+      <!-- ── STEP 2: Periode ─────────────────────────────────────────────── -->
+      <section class="step-panel" id="panel-2">
+        <div class="panel-header">
+          <h2>📅 Pilih Periode Gaji</h2>
+          <p>Tentukan bulan dan tahun untuk slip gaji yang akan di-generate. Periode ini akan tampil di header setiap PDF.</p>
+        </div>
+
+        <div class="card">
+          <div class="periode-selectors">
+            <div class="form-group">
+              <label for="selBulan">Bulan</label>
+              <select id="selBulan"></select>
+            </div>
+            <div class="form-group">
+              <label for="selTahun">Tahun</label>
+              <select id="selTahun"></select>
+            </div>
+          </div>
+
+          <div class="periode-preview-box">
+            <div class="preview-label">Preview Header PDF</div>
+            <div class="preview-value" id="periodePreview">BULAN MEI 2026</div>
+          </div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn-back-2">← Kembali</button>
+          <button class="btn btn-primary btn-lg" id="btn-next-2">
+            Lanjut — Preview Data →
+          </button>
+        </div>
+      </section>
+
+      <!-- ── STEP 3: Preview ─────────────────────────────────────────────── -->
+      <section class="step-panel" id="panel-3">
+        <div class="panel-header">
+          <h2>👁️ Preview & Validasi Data</h2>
+          <p>Periksa data karyawan sebelum generate PDF. Pastikan tidak ada baris dengan status <strong style="color:#f87171">Error</strong> sebelum melanjutkan.</p>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary-cards">
+          <div class="summary-card card-ok">
+            <div class="label">Total Karyawan</div>
+            <div class="value" id="summaryTotal">0</div>
+          </div>
+          <div class="summary-card card-error">
+            <div class="label">Data Error</div>
+            <div class="value" id="summaryError">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Total Gaji Bersih</div>
+            <div class="value" id="summaryGaji" style="font-size:1rem;">-</div>
+          </div>
+        </div>
+
+        <!-- Error notice -->
+        <div class="error-notice hidden" id="preview-error-notice">
+          ⚠️ Terdapat data yang error. Perbaiki file Excel dan upload ulang sebelum melanjutkan.
+        </div>
+
+        <!-- Search -->
+        <div class="search-row">
+          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama, NIK, jabatan...">
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nama</th>
+                <th>NIK</th>
+                <th>Jabatan</th>
+                <th>Gaji Pokok</th>
+                <th>Gaji Bersih</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="previewTbody">
+              <tr><td colspan="7" style="text-align:center;color:#475569;padding:32px">— Belum ada data —</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn-back-3">← Kembali</button>
+          <button class="btn btn-primary btn-lg" id="btn-next-3" disabled>
+            ⚡ Generate Semua Slip Gaji →
+          </button>
+        </div>
+      </section>
+
+      <!-- ── STEP 4: Generate ────────────────────────────────────────────── -->
+      <section class="step-panel" id="panel-4">
+        <div class="panel-header">
+          <h2>⚡ Generate & Download</h2>
+          <p>PDF slip gaji sedang dibuat dan di-enkripsi. Harap tunggu hingga proses selesai.</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="card">
+          <div class="progress-section">
+            <div class="progress-label">
+              <span id="progressText">Mempersiapkan...</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+          </div>
+
+          <!-- Log -->
+          <div class="generate-log" id="generateLog">
+            <span style="color:#475569">Log generate akan muncul di sini...</span>
+          </div>
+        </div>
+
+        <!-- Download -->
+        <div class="download-section hidden" id="downloadSection">
+          <p>🎉 Semua slip gaji telah berhasil di-generate dan ter-enkripsi!</p>
+          <button class="btn btn-success btn-lg" id="btnDownload">
+            ⬇️ Download ZIP
+          </button>
+          <p class="text-muted mt-2">File ZIP berisi semua PDF yang ter-enkripsi dengan password masing-masing karyawan.</p>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn btn-ghost" id="btn-back-4">← Kembali</button>
+        </div>
+      </section>
+
+    </div><!-- /container -->
+  </main>
+
+  <!-- Toast container -->
+  <div id="toastContainer"></div>
+
+  <!-- App Scripts (order matters) -->
+  <script src="js/utils.js"></script>
+  <script src="js/excel-parser.js"></script>
+  <script src="js/pdf-encrypt.js"></script>
+  <script src="js/pdf-generator.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
