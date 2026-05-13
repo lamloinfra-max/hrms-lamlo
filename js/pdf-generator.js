@@ -77,11 +77,12 @@ async function generateSlipGajiPDF(emp, periodeLabel) {
   doc.setFillColor(...C.navy);
   doc.rect(0, 0, pw, 38, 'F');
 
-  // Logo
-  const logo = await loadLogoDataUrl();
-  if (logo) {
-    doc.addImage(logo, 'PNG', ml, 6, 22, 22);
-  }
+  // Logo - Dinonaktifkan sementara untuk troubleshooting
+  // const logo = await loadLogoDataUrl();
+  // if (logo) {
+  //   doc.addImage(logo, 'PNG', ml, 6, 22, 22);
+  // }
+  const logo = null;
 
   // Company name
   doc.setTextColor(...C.white);
@@ -266,5 +267,7 @@ async function generateSlipGajiPDF(emp, periodeLabel) {
   doc.text('Dokumen ini diterbitkan secara elektronik dan sah tanpa tanda tangan.', pw / 2, y, { align: 'center' });
   doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, pw / 2, y + 4, { align: 'center' });
 
-  return doc.output('arraybuffer', { compress: true });
+  const out = doc.output('arraybuffer');
+  console.log(`[DEBUG] PDF Generated size: ${out.byteLength} bytes`);
+  return out;
 }
