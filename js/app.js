@@ -192,7 +192,18 @@ async function previewEmployeePDF(index) {
     let finalBytes;
     if (useEncryption) {
       console.log("[DEBUG] Encrypting PDF...");
-      finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+      const encBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+      
+      try {
+        console.log("[DEBUG] Repairing PDF Structure with pdf-lib...");
+        // Load file yang "rusak" strukturnya, biarkan pdf-lib memperbaikinya
+        const pdfDoc = await PDFLib.PDFDocument.load(encBytes, { ignoreEncryption: true });
+        finalBytes = await pdfDoc.save();
+        console.log("[DEBUG] Repair complete.");
+      } catch (repairErr) {
+        console.warn("[DEBUG] Repair failed, using raw encrypted bytes:", repairErr);
+        finalBytes = encBytes;
+      }
     } else {
       console.log("[DEBUG] Skipping Encryption for testing...");
       finalBytes = new Uint8Array(pdfBytes);
@@ -269,14 +280,22 @@ async function startGenerate() {
       const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
 
       // 2. Encrypt PDF
-      const password = emp._resolvedPassword;
+      const password = getPasswordForEmployee(emp);
       const encBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
 
-      // 3. Add to ZIP
-      const filename = sanitizeFilename(
-        `SlipGaji_${emp.nik}_${emp.nama}_${periodeSlug}.pdf`
-      );
-      zip.file(filename, encBytes);
+      // 3. REPAIR Structure (CRITICAL for non-blank PDF)
+      let finalBytes;
+      try {
+        const pdfDoc = await PDFLib.PDFDocument.load(encBytes, { ignoreEncryption: true });
+        finalBytes = await pdfDoc.save();
+      } catch (e) {
+        console.warn("Repair failed for " + emp.nama, e);
+        finalBytes = encBytes;
+      }
+
+      // 4. Add to ZIP
+      const fileName = sanitizeFilename(`SlipGaji_${emp.nama}_${periodeSlug}.pdf`);
+      zip.file(fileName, finalBytes);
 
       logEntry(logContainer, `✅ ${emp.nama} (${emp.nik}) — password: ${password}`, 'ok');
     } catch (err) {
