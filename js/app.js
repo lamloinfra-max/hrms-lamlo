@@ -185,12 +185,21 @@ async function previewEmployeePDF(index) {
     // 1. Generate PDF
     const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
 
-    // 2. Encrypt PDF
+    // 2. Encrypt PDF (Optional for debugging)
     const password = getPasswordForEmployee(emp);
-    const encBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+    const useEncryption = false; // DISESUAIKAN UNTUK DEBUG: Kita ingin tahu apakah PDF aslinya muncul
+    
+    let finalBytes;
+    if (useEncryption) {
+      console.log("[DEBUG] Encrypting PDF...");
+      finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+    } else {
+      console.log("[DEBUG] Skipping Encryption for testing...");
+      finalBytes = new Uint8Array(pdfBytes);
+    }
 
     // 3. Open in new tab
-    const blob = new Blob([encBytes], { type: 'application/pdf' });
+    const blob = new Blob([finalBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     
     // Buka tab baru
