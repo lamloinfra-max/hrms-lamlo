@@ -187,7 +187,7 @@ async function previewEmployeePDF(index) {
 
     // 2. Encrypt PDF (Optional for debugging)
     const password = getPasswordForEmployee(emp);
-    const useEncryption = false; // DISESUAIKAN UNTUK DEBUG: Kita ingin tahu apakah PDF aslinya muncul
+    const useEncryption = true; // AKTIFKAN KEMBALI: Sudah menggunakan logika selektif
     
     let finalBytes;
     if (useEncryption) {

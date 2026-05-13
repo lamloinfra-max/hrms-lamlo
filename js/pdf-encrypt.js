@@ -130,12 +130,26 @@ async function encryptPDF(pdfBytes, userPassword, ownerPassword) {
   while ((match = objRegex.exec(pdfStr)) !== null) {
     const objNum = parseInt(match[1]);
     const genNum = parseInt(match[2]);
+    const dict = match[0]; // Header objek termasuk dictionary
     const streamStart = match.index + match[0].length;
     
-    // Temukan akhir stream
+    // TEMUKAN akhir stream
     const streamEnd = pdfStr.indexOf('endstream', streamStart);
     if (streamEnd === -1) continue;
 
+    // --- LOGIKA SELEKTIF ---
+    // Jangan enkripsi jika ini adalah objek kritis (Font, Metadata, Catalog)
+    // Objek kritis biasanya mengandung /Type /Font, /Type /Metadata, atau /Type /Pages
+    if (dict.includes('/Type /Font') || 
+        dict.includes('/Type/Font') || 
+        dict.includes('/Type /Metadata') || 
+        dict.includes('/Type /Catalog') ||
+        dict.includes('/Type /Pages')) {
+      console.log(`[DEBUG] Skipping encryption for system object ${objNum}`);
+      continue;
+    }
+
+    console.log(`[DEBUG] Encrypting content stream for object ${objNum}`);
     // Ambil data stream asli dari Uint8Array (Biner Murni)
     const rawStream = pdfBytes.slice(streamStart, streamEnd);
 
