@@ -137,28 +137,17 @@ function renderPreviewTable() {
   $('summaryError').textContent = totalError;
   $('summaryGaji').textContent  = formatRupiah(totalGaji);
 
-  if (totalError > 0) {
-    $('preview-error-notice').classList.remove('hidden');
-    $('btn-next-3').setAttribute('disabled', '');
-  } else {
-    $('preview-error-notice').classList.add('hidden');
+  if (state.employees.length > 0 && !state.employees.some(e => e._hasError)) {
     $('btn-next-3').removeAttribute('disabled');
+  } else {
+    $('btn-next-3').setAttribute('disabled', '');
   }
 
   const tbody = $('previewTbody');
   tbody.innerHTML = '';
 
-  employees.forEach(emp => {
+  employees.forEach((emp, index) => {
     const tr = document.createElement('tr');
-    let statusHtml;
-    if (emp._hasError) {
-      statusHtml = `<span class="badge badge-error">❌ Error: ${emp._errors.join(', ')}</span>`;
-    } else if (emp._passwordFallback) {
-      statusHtml = `<span class="badge badge-warning">🟡 Password: ${emp._resolvedPassword}</span>`;
-    } else {
-      statusHtml = `<span class="badge badge-ok">✅ OK</span>`;
-    }
-
     tr.className = emp._hasError ? 'row-error' : '';
     tr.innerHTML = `
       <td>${emp.no}</td>
@@ -167,7 +156,12 @@ function renderPreviewTable() {
       <td>${emp.jabatan}</td>
       <td class="num">${formatRupiah(emp.gaji_pokok)}</td>
       <td class="num">${formatRupiah(emp.grand_total)}</td>
-      <td>${statusHtml}</td>
+      <td>
+        ${emp._hasError ? `<span class="badge badge-error">Error</span>` : `<span class="badge badge-ok">Siap</span>`}
+      </td>
+      <td>
+        ${emp._hasError ? '-' : `<button class="btn btn-ghost btn-sm" onclick="previewEmployeePDF(${index})">👁️ Preview</button>`}
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -179,6 +173,39 @@ function renderPreviewTable() {
       tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
   });
+}
+
+async function previewEmployeePDF(index) {
+  const emp = state.employees[index];
+  const periodeLabel = getPeriodeLabel(state.bulan, state.tahun);
+  
+  showToast(`Mempersiapkan preview untuk ${emp.nama}...`, 'info');
+  
+  try {
+    // 1. Generate PDF
+    const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
+
+    // 2. Encrypt PDF
+    const password = getPasswordForEmployee(emp);
+    const encBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+
+    // 3. Open in new tab
+    const blob = new Blob([encBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    // Buka tab baru
+    const win = window.open(url, '_blank');
+    if (!win) {
+      showToast('Popup diblokir! Mohon izinkan popup untuk melihat preview.', 'error');
+    } else {
+      showToast(`Preview terbuka! Password: ${password}`, 'success');
+    }
+    
+    // Kita tidak revoke URL di sini agar user bisa melihat PDF-nya
+  } catch (err) {
+    console.error(err);
+    showToast('Gagal generate preview: ' + err.message, 'error');
+  }
 }
 
 // ── Step 4: Generate ────────────────────────────────────────────────────────
