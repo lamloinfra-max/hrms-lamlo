@@ -182,24 +182,15 @@ async function previewEmployeePDF(index) {
   showToast(`Mempersiapkan preview untuk ${emp.nama}...`, 'info');
   
   try {
-    // 1. Generate PDF
-    const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
-
-    // 2. Encrypt PDF (Optional for debugging)
+    // Ambil password untuk enkripsi native
     const password = getPasswordForEmployee(emp);
-    const useEncryption = false; // EMERGENCY DISABLE: Mengembalikan fungsi aplikasi agar tidak blank
     
-    let finalBytes;
-    if (useEncryption) {
-      console.log("[DEBUG] Encrypting PDF with Byte-Offset Correction...");
-      finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
-      console.log("[DEBUG] Encryption complete.");
-    } else {
-      console.log("[DEBUG] Skipping Encryption for testing...");
-      finalBytes = new Uint8Array(pdfBytes);
-    }
-
-    // 3. Open in new tab
+    // Generate PDF dengan enkripsi NATIVE (PDFKit)
+    console.log(`[DEBUG] Generating Native Encrypted PDF for ${emp.nama}...`);
+    const finalBytes = await generateSlipGajiPDF(emp, periodeLabel, password);
+    console.log("[DEBUG] Generation complete.");
+    
+    // Download/Preview
     const blob = new Blob([finalBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     
@@ -266,14 +257,11 @@ async function startGenerate() {
 
   for (const emp of employees) {
     try {
-      // 1. Generate PDF
-      const pdfBytes = await generateSlipGajiPDF(emp, periodeLabel);
-
-      // 2. Encrypt PDF
+      // 1. Generate PDF (Native Encrypted)
       const password = getPasswordForEmployee(emp);
-      const finalBytes = await encryptPDF(new Uint8Array(pdfBytes), password, password);
+      const finalBytes = await generateSlipGajiPDF(emp, periodeLabel, password);
 
-      // 3. Add to ZIP
+      // 2. Add to ZIP
       const fileName = sanitizeFilename(`SlipGaji_${emp.nama}_${periodeSlug}.pdf`);
       zip.file(fileName, finalBytes);
 
