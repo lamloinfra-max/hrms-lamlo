@@ -4,9 +4,9 @@
 async function generateSlipGajiPDF(emp, periode, password = null) {
   return new Promise((resolve, reject) => {
     try {
-      // 1. Inisialisasi PDFKit Document
-      // Jika password diberikan, PDFKit akan mengenkripsi file secara native
-      const doc = new PDFKit.PDFDocument({
+      // 1. Inisialisasi PDFDocument
+      // Di browser via CDN standalone, variabelnya adalah PDFDocument
+      const doc = new PDFDocument({
         size: 'A4',
         margin: 50,
         userPassword: password, // PASSWORD NATIVE!
