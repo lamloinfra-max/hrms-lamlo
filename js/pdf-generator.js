@@ -61,7 +61,12 @@ async function loadLogoDataUrl() {
 
 async function generateSlipGajiPDF(emp, periodeLabel) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: false // Matikan kompresi agar struktur trailer mudah dibaca
+  });
 
   const pw = 210, ph = 297;
   const ml = 14, mr = 14, mt = 14;
