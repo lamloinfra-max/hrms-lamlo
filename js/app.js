@@ -187,7 +187,7 @@ async function previewEmployeePDF(index) {
 
     // 2. Encrypt PDF (Optional for debugging)
     const password = getPasswordForEmployee(emp);
-    const useEncryption = true; // AKTIFKAN KEMBALI: Sudah menggunakan logika selektif
+    const useEncryption = false; // EMERGENCY DISABLE: Mengembalikan fungsi aplikasi agar tidak blank
     
     let finalBytes;
     if (useEncryption) {
