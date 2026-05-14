@@ -1,0 +1,14 @@
+.git
+.gitignore
+.agent
+node_modules
+docs
+*.xlsx
+*.xls
+README.md
+DEPLOYMENT.md
+PRD.md
+Dockerfile
+docker-compose.yml
+.DS_Store
+Thumbs.db

@@ -6,7 +6,7 @@ services:
     container_name: lamlo-payslip-app
     restart: unless-stopped
     ports:
-      # Expose port 8080 di Ubuntu server untuk dihubungkan ke Cloudflare Tunnel
-      - "8080:80"
+      # Diakses via http://localhost:8090 atau via Cloudflare Tunnel
+      - "8090:80"
     environment:
       - TZ=Asia/Jakarta
