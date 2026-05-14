@@ -1,22 +1,55 @@
 // pdf-generator.js — Native PDF Generation using PDFKit
-// Menghasilkan PDF yang terenkripsi secara native tanpa manipulasi byte manual.
+// Menggunakan enkripsi native PDFKit dengan proteksi buffer untuk stabilitas di browser.
 
 async function generateSlipGajiPDF(emp, periode, password = null) {
   return new Promise((resolve, reject) => {
     try {
-      // 1. Inisialisasi PDFDocument
-      // Di browser via CDN standalone, variabelnya adalah PDFDocument
-      const doc = new PDFDocument({
+      // 1. Inisialisasi PDFDocument dengan ENKRIPSI NATIVE
+      // PDF versi 1.4 lebih stabil untuk enkripsi RC4 standar di lingkungan browser
+      const pdfOptions = {
         size: 'A4',
         margin: 50,
-        userPassword: password, // PASSWORD NATIVE!
-        ownerPassword: 'admin_lamlo'
+        pdfVersion: '1.4',
+        info: {
+          Title: `Slip Gaji - ${emp.nama}`,
+          Author: 'HRMS Lamlo'
+        }
+      };
+
+      if (password) {
+        console.log(`[SECURE] Generating encrypted PDF for ${emp.nama}...`);
+        pdfOptions.userPassword = password;
+        pdfOptions.ownerPassword = 'admin_lamlo_secure';
+        pdfOptions.permissions = {
+          printing: 'highResolution',
+          modifying: false,
+          copying: true
+        };
+      }
+
+      const doc = new PDFDocument(pdfOptions);
+      
+      // Buffer collection manual untuk menghindari korupsi data stream di browser
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('error', (err) => reject(err));
+      doc.on('end', () => {
+        try {
+          // Gabungkan chunks secara manual karena 'Buffer' tidak ada di browser
+          const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+          const finalBuffer = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            finalBuffer.set(chunk, offset);
+            offset += chunk.length;
+          }
+          resolve(finalBuffer);
+        } catch (err) {
+          reject(err);
+        }
       });
 
-      const stream = doc.pipe(blobStream());
-
-      // --- DESIGN SLIP GAJI (Mapping dari jsPDF ke PDFKit) ---
-      
+      // --- DESIGN SLIP GAJI ---
       // Header: Nama Perusahaan
       doc.fontSize(16).text('PT. LAMLO PHARMACY', { align: 'center' });
       doc.fontSize(10).text('Gubug, Grobogan, Jawa Tengah', { align: 'center' });
@@ -47,7 +80,7 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
 
       let currentY = tableTop + 25;
       
-      const formatRupiah = (num) => {
+      const formatRupiahLocal = (num) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
       };
 
@@ -64,7 +97,7 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       items.forEach(item => {
         if (item.value > 0) {
           doc.text(item.label, 60, currentY);
-          doc.text(formatRupiah(item.value), 450, currentY, { align: 'right', width: 85 });
+          doc.text(formatRupiahLocal(item.value), 450, currentY, { align: 'right', width: 85 });
           currentY += 15;
         }
       });
@@ -84,36 +117,33 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       deductions.forEach(item => {
         if (item.value > 0) {
           doc.text(item.label, 60, doc.y);
-          doc.text(`(${formatRupiah(item.value)})`, 450, doc.y, { align: 'right', width: 85 });
+          doc.text(`(${formatRupiahLocal(item.value)})`, 450, doc.y, { align: 'right', width: 85 });
           doc.moveDown(0.8);
         }
       });
 
       // Total
       doc.moveDown();
-      doc.rect(50, doc.y, 495, 25).fill('#e8f5e9').stroke();
-      doc.fillColor('#2e7d32').fontSize(11).text('TAKE HOME PAY (TOTAL DITERIMA)', 60, doc.y + 7, { bold: true });
-      doc.text(formatRupiah(emp.totalGaji), 450, doc.y - 12, { align: 'right', width: 85 });
+      const totalY = doc.y;
+      doc.rect(50, totalY, 495, 25).fill('#e8f5e9').stroke();
+      doc.fillColor('#2e7d32').fontSize(11).text('TAKE HOME PAY (TOTAL DITERIMA)', 60, totalY + 7, { bold: true });
+      doc.text(formatRupiahLocal(emp.totalGaji), 450, totalY + 7, { align: 'right', width: 85 });
 
       // Footer: Tanda Tangan
       doc.fillColor('black').fontSize(10);
       doc.moveDown(4);
-      const signY = doc.y;
-      doc.text('Diterima Oleh,', 100, signY);
-      doc.text('HRD Department,', 400, signY);
-      doc.moveDown(4);
-      doc.text(`( ${emp.nama} )`, 100, doc.y);
-      doc.text('( PT. Lamlo Pharmacy )', 400, doc.y);
+      const footerY = doc.y;
+      doc.text('Dicetak pada: ' + new Date().toLocaleString('id-ID'), 50, footerY);
+      
+      doc.text('Penerima,', 400, footerY);
+      doc.moveDown(3);
+      doc.text(`( ${emp.nama} )`, 400, doc.y);
 
-      // --- AKHIR DOKUMEN ---
+      // Finalize PDF file
       doc.end();
 
-      stream.on('finish', function() {
-        const blob = stream.toBlob('application/pdf');
-        blob.arrayBuffer().then(resolve).catch(reject);
-      });
-
     } catch (err) {
+      console.error("PDF Generation Error:", err);
       reject(err);
     }
   });

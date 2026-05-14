@@ -254,6 +254,7 @@ async function startGenerate() {
 
   const zip = new JSZip();
   let done = 0;
+  let hasError = false;
 
   for (const emp of employees) {
     try {
@@ -267,6 +268,7 @@ async function startGenerate() {
 
       logEntry(logContainer, `✅ ${emp.nama} (${emp.nik}) — password: ${password}`, 'ok');
     } catch (err) {
+      hasError = true;
       logEntry(logContainer, `❌ ${emp.nama} — ${err.message}`, 'err');
     }
 
@@ -277,6 +279,13 @@ async function startGenerate() {
       progressText.textContent = `Generating ${done} / ${employees.length}`;
       await sleep(1); // Yield to browser to update UI
     }
+  }
+
+  if (hasError) {
+    progressText.textContent = `⚠️ Selesai dengan beberapa kesalahan. Perbaiki data dan coba lagi.`;
+    downloadSection.classList.add('hidden');
+    showToast(`❌ Beberapa slip gaji gagal di-generate. Tombol download disembunyikan.`, 'error');
+    return;
   }
 
   progressText.textContent = `✅ Selesai! ${done} slip gaji berhasil di-generate.`;
