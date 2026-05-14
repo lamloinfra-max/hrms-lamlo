@@ -5,7 +5,6 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
   return new Promise((resolve, reject) => {
     try {
       // 1. Inisialisasi PDFDocument dengan ENKRIPSI NATIVE
-      // PDF versi 1.4 lebih stabil untuk enkripsi RC4 standar di lingkungan browser
       const pdfOptions = {
         size: 'A4',
         margin: 50,
@@ -17,7 +16,6 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       };
 
       if (password) {
-        console.log(`[SECURE] Generating encrypted PDF for ${emp.nama}...`);
         pdfOptions.userPassword = password;
         pdfOptions.ownerPassword = 'admin_lamlo_secure';
         pdfOptions.permissions = {
@@ -29,13 +27,11 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
 
       const doc = new PDFDocument(pdfOptions);
       
-      // Buffer collection manual untuk menghindari korupsi data stream di browser
       const chunks = [];
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('error', (err) => reject(err));
       doc.on('end', () => {
         try {
-          // Gabungkan chunks secara manual karena 'Buffer' tidak ada di browser
           const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
           const finalBuffer = new Uint8Array(totalLength);
           let offset = 0;
@@ -50,94 +46,133 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       });
 
       // --- DESIGN SLIP GAJI ---
-      // Header: Nama Perusahaan
-      doc.fontSize(16).text('PT. LAMLO PHARMACY', { align: 'center' });
-      doc.fontSize(10).text('Gubug, Grobogan, Jawa Tengah', { align: 'center' });
-      doc.moveDown();
       
-      // Garis Pemisah
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
-      doc.moveDown();
+      // Header: Nama & Alamat Perusahaan
+      doc.font('Helvetica-Bold').fontSize(14).text('PT. LAMLO PHARMACY', { align: 'center' });
+      doc.font('Helvetica').fontSize(9)
+         .text('JL. TEUKU FAKINAH NO. 07 LAM BLANG TRIENG', { align: 'center' })
+         .text('DARUL IMARAH - ACEH BESAR', { align: 'center' });
+      doc.moveDown(0.5);
+      
+      // Garis Pemisah Double
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(1.5).stroke();
+      doc.moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).lineWidth(0.5).stroke();
+      doc.moveDown(1.5);
 
-      doc.fontSize(14).text('SLIP GAJI KARYAWAN', { align: 'center', underline: true });
-      doc.fontSize(10).text(`Periode: ${periode}`, { align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(12).text('SLIP GAJI KARYAWAN', { align: 'center', underline: false });
+      doc.font('Helvetica').fontSize(10).text(`Periode: ${periode}`, { align: 'center' });
       doc.moveDown(2);
 
-      // Data Karyawan
+      // Data Karyawan (Layout Kolom)
       const startY = doc.y;
       doc.fontSize(10);
-      doc.text(`NIK           : ${emp.nik}`, 50, startY);
-      doc.text(`Nama          : ${emp.nama}`, 50, startY + 15);
-      doc.text(`Jabatan       : ${emp.jabatan || '-'}`, 50, startY + 30);
-      doc.text(`Departemen    : ${emp.departemen || '-'}`, 50, startY + 45);
-      doc.moveDown(4);
-
-      // Tabel Pendapatan & Potongan
-      const tableTop = doc.y;
-      doc.rect(50, tableTop, 495, 20).fill('#f0f0f0').stroke();
-      doc.fillColor('black').text('DESKRIPSI', 60, tableTop + 5);
-      doc.text('JUMLAH (IDR)', 450, tableTop + 5, { align: 'right', width: 85 });
-
-      let currentY = tableTop + 25;
       
-      const formatRupiahLocal = (num) => {
+      // Kolom Kiri
+      doc.font('Helvetica-Bold').text('NIK', 50, startY);
+      doc.font('Helvetica').text(`: ${emp.nik}`, 130, startY);
+      
+      doc.font('Helvetica-Bold').text('Nama', 50, startY + 15);
+      doc.font('Helvetica').text(`: ${emp.nama}`, 130, startY + 15);
+      
+      // Kolom Kanan
+      doc.font('Helvetica-Bold').text('Jabatan', 320, startY);
+      doc.font('Helvetica').text(`: ${emp.jabatan || '-'}`, 400, startY);
+      
+      doc.font('Helvetica-Bold').text('Departemen', 320, startY + 15);
+      doc.font('Helvetica').text(`: ${emp.departemen || '-'}`, 400, startY + 15);
+      
+      doc.moveDown(3);
+
+      // --- TABEL PENDAPATAN & POTONGAN ---
+      const tableTop = doc.y;
+      const col1 = 60;
+      const col2 = 400;
+      
+      // Header Tabel
+      doc.rect(50, tableTop, 495, 20).fill('#f5f5f5').stroke('#cccccc');
+      doc.fillColor('black').font('Helvetica-Bold').text('DESKRIPSI', col1, tableTop + 6);
+      doc.text('JUMLAH (IDR)', col2, tableTop + 6, { align: 'right', width: 135 });
+
+      let currentY = tableTop + 28;
+      doc.font('Helvetica');
+      
+      const formatRupiah = (num) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
       };
 
-      // Item Pendapatan
-      const items = [
-        { label: 'Gaji Pokok', value: emp.gajiPokok },
-        { label: 'Tunjangan Jabatan', value: emp.tunjanganJabatan },
-        { label: 'Tunjangan Transport', value: emp.tunjanganTransport },
-        { label: 'Tunjangan Makan', value: emp.tunjanganMakan },
+      // 1. PENDAPATAN
+      doc.font('Helvetica-Bold').text('PENDAPATAN', col1, currentY);
+      currentY += 18;
+      doc.font('Helvetica');
+
+      const incomeItems = [
+        { label: 'Gaji Pokok', value: emp.gaji_pokok },
+        { label: 'Tunjangan Tetap', value: emp.tunjangan },
+        { label: 'Uang Makan', value: emp.uang_makan },
+        { label: 'Uang Transport', value: emp.uang_transport },
         { label: 'Lembur', value: emp.lembur },
-        { label: 'Bonus/Insentif', value: emp.bonus }
+        { label: 'Insentif / Bonus', value: emp.insentif },
+        { label: 'Pendapatan Lain-lain', value: emp.lain_income }
       ];
 
-      items.forEach(item => {
+      incomeItems.forEach(item => {
         if (item.value > 0) {
-          doc.text(item.label, 60, currentY);
-          doc.text(formatRupiahLocal(item.value), 450, currentY, { align: 'right', width: 85 });
+          doc.text(item.label, col1 + 10, currentY);
+          doc.text(formatRupiah(item.value), col2, currentY, { align: 'right', width: 135 });
           currentY += 15;
         }
       });
 
-      // Potongan
-      doc.moveDown();
-      doc.text('POTONGAN:', 60, doc.y, { underline: true });
-      doc.moveDown(0.5);
-      
-      const deductions = [
-        { label: 'BPJS Kesehatan', value: emp.bpjsKesehatan },
-        { label: 'BPJS Ketenagakerjaan', value: emp.bpjsKetenagakerjaan },
-        { label: 'Pajak (PPh21)', value: emp.pajak },
-        { label: 'Potongan Lainnya', value: emp.potonganLain }
+      // Subtotal Pendapatan
+      doc.moveTo(col1, currentY + 5).lineTo(545, currentY + 5).lineWidth(0.5).stroke('#dddddd');
+      currentY += 12;
+      doc.font('Helvetica-Bold').text('Total Pendapatan (A)', col1, currentY);
+      doc.text(formatRupiah(emp.total_income), col2, currentY, { align: 'right', width: 135 });
+      currentY += 25;
+
+      // 2. POTONGAN
+      doc.font('Helvetica-Bold').text('POTONGAN', col1, currentY);
+      currentY += 18;
+      doc.font('Helvetica');
+
+      const bpjsTK = (emp.jht || 0) + (emp.pensiun || 0);
+      const deductItems = [
+        { label: 'BPJS Kesehatan', value: emp.bpjs_kes },
+        { label: 'BPJS Ketenagakerjaan', value: bpjsTK },
+        { label: 'Angsuran Pinjaman', value: emp.pinjaman_bayar },
+        { label: 'Potongan Lain-lain', value: emp.lain_deduct }
       ];
 
-      deductions.forEach(item => {
+      deductItems.forEach(item => {
         if (item.value > 0) {
-          doc.text(item.label, 60, doc.y);
-          doc.text(`(${formatRupiahLocal(item.value)})`, 450, doc.y, { align: 'right', width: 85 });
-          doc.moveDown(0.8);
+          doc.text(item.label, col1 + 10, currentY);
+          doc.text(`(${formatRupiah(item.value)})`, col2, currentY, { align: 'right', width: 135 });
+          currentY += 15;
         }
       });
 
-      // Total
-      doc.moveDown();
-      const totalY = doc.y;
-      doc.rect(50, totalY, 495, 25).fill('#e8f5e9').stroke();
-      doc.fillColor('#2e7d32').fontSize(11).text('TAKE HOME PAY (TOTAL DITERIMA)', 60, totalY + 7, { bold: true });
-      doc.text(formatRupiahLocal(emp.totalGaji), 450, totalY + 7, { align: 'right', width: 85 });
+      // Subtotal Potongan
+      doc.moveTo(col1, currentY + 5).lineTo(545, currentY + 5).lineWidth(0.5).stroke('#dddddd');
+      currentY += 12;
+      doc.font('Helvetica-Bold').text('Total Potongan (B)', col1, currentY);
+      doc.text(`(${formatRupiah(emp.total_deduct)})`, col2, currentY, { align: 'right', width: 135 });
+      currentY += 30;
+
+      // --- GRAND TOTAL ---
+      doc.rect(50, currentY, 495, 30).fill('#e8f5e9').stroke('#2e7d32');
+      doc.fillColor('#1b5e20').font('Helvetica-Bold').fontSize(11).text('TAKE HOME PAY (A - B)', col1, currentY + 10);
+      doc.text(formatRupiah(emp.grand_total), col2, currentY + 10, { align: 'right', width: 135 });
 
       // Footer: Tanda Tangan
-      doc.fillColor('black').fontSize(10);
-      doc.moveDown(4);
+      doc.fillColor('black').fontSize(9).font('Helvetica');
+      doc.moveDown(5);
       const footerY = doc.y;
+      
       doc.text('Dicetak pada: ' + new Date().toLocaleString('id-ID'), 50, footerY);
       
-      doc.text('Penerima,', 400, footerY);
-      doc.moveDown(3);
-      doc.text(`( ${emp.nama} )`, 400, doc.y);
+      doc.text('Penerima,', 420, footerY);
+      doc.moveDown(4);
+      doc.font('Helvetica-Bold').text(`( ${emp.nama} )`, 420, doc.y, { align: 'center', width: 100 });
 
       // Finalize PDF file
       doc.end();
