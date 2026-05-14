@@ -27,7 +27,7 @@
         </div>
       </div>
       <div>
-        <span class="badge-secure">🔒 Data tidak keluar dari browser</span>
+        <span class="badge-secure">🔒 Keamanan Terjamin (Browser-Only)</span>
       </div>
     </div>
   </header>
@@ -42,7 +42,7 @@
           <div class="step-icon">📁</div>
           <div class="step-info">
             <span class="step-number">01</span>
-            <span class="step-label">Upload Excel</span>
+            <span class="step-label">Upload</span>
           </div>
         </div>
         <div class="step-connector"></div>
@@ -50,7 +50,7 @@
           <div class="step-icon">📅</div>
           <div class="step-info">
             <span class="step-number">02</span>
-            <span class="step-label">Pilih Periode</span>
+            <span class="step-label">Periode</span>
           </div>
         </div>
         <div class="step-connector"></div>
@@ -58,7 +58,7 @@
           <div class="step-icon">👁️</div>
           <div class="step-info">
             <span class="step-number">03</span>
-            <span class="step-label">Preview & Validasi</span>
+            <span class="step-label">Validasi</span>
           </div>
         </div>
         <div class="step-connector"></div>
@@ -66,7 +66,7 @@
           <div class="step-icon">⚡</div>
           <div class="step-info">
             <span class="step-number">04</span>
-            <span class="step-label">Generate & Download</span>
+            <span class="step-label">Generate</span>
           </div>
         </div>
       </div>
@@ -74,22 +74,22 @@
       <!-- ── STEP 1: Upload ──────────────────────────────────────────────── -->
       <section class="step-panel active" id="panel-1">
         <div class="panel-header">
-          <h2>📁 Upload File Excel</h2>
-          <p>Upload file Excel yang berisi data slip gaji. Pastikan file memiliki sheet bernama <code>TEMPLATE</code> sesuai format yang sudah ditentukan.</p>
+          <h2>📁 Upload Data Gaji</h2>
+          <p>Pilih file Excel yang berisi data karyawan. Gunakan template yang telah disediakan.</p>
         </div>
 
         <div class="upload-area" id="uploadArea">
           <span class="upload-icon">📊</span>
-          <h3>Drag & Drop file Excel di sini</h3>
+          <h3>Tarik file ke sini</h3>
           <p>atau</p>
           <label class="btn btn-primary" for="fileInput" style="cursor:pointer;">
-            📂 Browse File
+            📂 Cari File
           </label>
           <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
-          <p class="upload-hint">Format: .xlsx · Maks 10MB · Sheet: TEMPLATE</p>
+          <p class="upload-hint">Format: .xlsx · Sheet: TEMPLATE</p>
           <div class="mt-4">
             <a href="javascript:void(0)" onclick="downloadTemplateExcel()" class="link-primary" style="font-size: 0.85rem;">
-              📥 Unduh Template Excel
+              📥 Download Template
             </a>
           </div>
         </div>
@@ -104,9 +104,9 @@
         </div>
 
         <div class="nav-row">
-          <span class="text-muted">Upload file Excel untuk melanjutkan</span>
+          <span class="text-muted">Upload file untuk melanjutkan</span>
           <button class="btn btn-primary btn-lg nav-row-right" id="btn-next-1" disabled>
-            Lanjut — Pilih Periode →
+            Lanjut ke Periode →
           </button>
         </div>
       </section>
@@ -115,7 +115,7 @@
       <section class="step-panel" id="panel-2">
         <div class="panel-header">
           <h2>📅 Pilih Periode Gaji</h2>
-          <p>Tentukan bulan dan tahun untuk slip gaji yang akan di-generate. Periode ini akan tampil di header setiap PDF.</p>
+          <p>Tentukan bulan dan tahun. Periode ini akan dicantumkan pada slip gaji.</p>
         </div>
 
         <div class="card">
@@ -131,7 +131,7 @@
           </div>
 
           <div class="periode-preview-box">
-            <div class="preview-label">Preview Header PDF</div>
+            <div class="preview-label">Preview Header</div>
             <div class="preview-value" id="periodePreview">BULAN MEI 2026</div>
           </div>
         </div>
@@ -139,7 +139,7 @@
         <div class="nav-row">
           <button class="btn btn-ghost" id="btn-back-2">← Kembali</button>
           <button class="btn btn-primary btn-lg" id="btn-next-2">
-            Lanjut — Preview Data →
+            Lanjut ke Validasi →
           </button>
         </div>
       </section>
@@ -147,37 +147,33 @@
       <!-- ── STEP 3: Preview ─────────────────────────────────────────────── -->
       <section class="step-panel" id="panel-3">
         <div class="panel-header">
-          <h2>👁️ Preview & Validasi Data</h2>
-          <p>Periksa data karyawan sebelum generate PDF. Pastikan tidak ada baris dengan status <strong style="color:#f87171">Error</strong> sebelum melanjutkan.</p>
+          <h2>👁️ Validasi Data Karyawan</h2>
+          <p>Pastikan semua data sudah benar sebelum proses generate dimulai.</p>
         </div>
 
-        <!-- Summary -->
         <div class="summary-cards">
           <div class="summary-card card-ok">
-            <div class="label">Total Karyawan</div>
+            <div class="label">Karyawan</div>
             <div class="value" id="summaryTotal">0</div>
           </div>
           <div class="summary-card card-error">
-            <div class="label">Data Error</div>
+            <div class="label">Error</div>
             <div class="value" id="summaryError">0</div>
           </div>
           <div class="summary-card">
-            <div class="label">Total Gaji Bersih</div>
+            <div class="label">Total Gaji</div>
             <div class="value" id="summaryGaji" style="font-size:1rem;">-</div>
           </div>
         </div>
 
-        <!-- Error notice -->
         <div class="error-notice hidden" id="preview-error-notice">
-          ⚠️ Terdapat data yang error. Perbaiki file Excel dan upload ulang sebelum melanjutkan.
+          ⚠️ Ada kesalahan pada data. Silakan perbaiki file Excel Anda.
         </div>
 
-        <!-- Search -->
         <div class="search-row">
-          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama, NIK, jabatan...">
+          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau NIK...">
         </div>
 
-        <!-- Table -->
         <div class="table-wrapper">
           <table class="preview-table">
             <thead>
@@ -185,7 +181,6 @@
                 <th>No</th>
                 <th>Nama</th>
                 <th>NIK</th>
-                <th>Jabatan</th>
                 <th>Gaji Pokok</th>
                 <th>Gaji Bersih</th>
                 <th>Status</th>
@@ -193,7 +188,7 @@
               </tr>
             </thead>
             <tbody id="previewTbody">
-              <tr><td colspan="7" style="text-align:center;color:#475569;padding:32px">— Belum ada data —</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:#475569;padding:32px">— Memuat data —</td></tr>
             </tbody>
           </table>
         </div>
@@ -201,7 +196,7 @@
         <div class="nav-row">
           <button class="btn btn-ghost" id="btn-back-3">← Kembali</button>
           <button class="btn btn-primary btn-lg" id="btn-next-3" disabled>
-            ⚡ Generate Semua Slip Gaji →
+            ⚡ Generate Slip Gaji →
           </button>
         </div>
       </section>
@@ -210,10 +205,9 @@
       <section class="step-panel" id="panel-4">
         <div class="panel-header">
           <h2>⚡ Generate & Download</h2>
-          <p>PDF slip gaji sedang dibuat dan di-enkripsi. Harap tunggu hingga proses selesai.</p>
+          <p>Harap tunggu hingga proses generate dan enkripsi PDF selesai.</p>
         </div>
 
-        <!-- Progress -->
         <div class="card">
           <div class="progress-section">
             <div class="progress-label">
@@ -224,19 +218,29 @@
             </div>
           </div>
 
-          <!-- Log -->
-          <div class="generate-log" id="generateLog">
-            <span style="color:#475569">Log generate akan muncul di sini...</span>
+          <div class="table-wrapper mt-4">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama Karyawan</th>
+                  <th>Password</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="generateLogTable">
+                <tr><td colspan="4" style="text-align:center;color:#475569;padding:24px">Proses akan dimulai...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Download -->
         <div class="download-section hidden" id="downloadSection">
-          <p>🎉 Semua slip gaji telah berhasil di-generate dan ter-enkripsi!</p>
+          <p>🎉 Semua slip gaji berhasil dibuat!</p>
           <button class="btn btn-success btn-lg" id="btnDownload">
             ⬇️ Download ZIP
           </button>
-          <p class="text-muted mt-2">File ZIP berisi semua PDF yang ter-enkripsi dengan password masing-masing karyawan.</p>
+          <p class="text-muted mt-2">File ZIP berisi PDF ter-enkripsi dengan password masing-masing.</p>
         </div>
 
         <div class="nav-row">
@@ -244,13 +248,11 @@
         </div>
       </section>
 
-    </div><!-- /container -->
+    </div>
   </main>
 
-  <!-- Toast container -->
   <div id="toastContainer"></div>
 
-  <!-- App Scripts (order matters) -->
   <script src="js/utils.js?v=1.2"></script>
   <script src="js/excel-parser.js?v=1.2"></script>
   <script src="js/pdf-generator.js?v=1.2"></script>

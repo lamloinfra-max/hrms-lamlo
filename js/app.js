@@ -76,9 +76,9 @@ function handleFile(file) {
       $('uploadArea').classList.add('hidden');
       $('fileInfo').classList.remove('hidden');
       $('fileName').textContent = file.name;
-      $('fileMeta').textContent = `${formatFileSize(file.size)} · ${employees.length} karyawan terdeteksi`;
+      $('fileMeta').textContent = `${formatFileSize(file.size)} · ${employees.length} karyawan`;
       $('btn-next-1').removeAttribute('disabled');
-      showToast(`✅ ${employees.length} data karyawan berhasil dibaca.`, 'success');
+      showToast(`✅ ${employees.length} karyawan terdeteksi.`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -100,7 +100,6 @@ function initPeriode() {
   const selBulan = $('selBulan');
   const selTahun = $('selTahun');
 
-  // Populate bulan
   MONTHS_ID.forEach((m, i) => {
     const opt = document.createElement('option');
     opt.value = i + 1; opt.textContent = m;
@@ -108,7 +107,6 @@ function initPeriode() {
     selBulan.appendChild(opt);
   });
 
-  // Populate tahun (current-2 to current+2)
   const yr = getCurrentYear();
   for (let y = yr - 2; y <= yr + 2; y++) {
     const opt = document.createElement('option');
@@ -130,7 +128,6 @@ function renderPreviewTable() {
   const employees = state.employees;
   const totalKaryawan = employees.length;
   const totalError    = employees.filter(e => e._hasError).length;
-  const totalFallback = employees.filter(e => e._passwordFallback && !e._hasError).length;
   const totalGaji     = employees.reduce((s, e) => s + (e.grand_total || 0), 0);
 
   $('summaryTotal').textContent = totalKaryawan;
@@ -153,11 +150,10 @@ function renderPreviewTable() {
       <td>${emp.no}</td>
       <td><strong>${emp.nama}</strong></td>
       <td class="mono">${emp.nik}</td>
-      <td>${emp.jabatan}</td>
       <td class="num">${formatRupiah(emp.gaji_pokok)}</td>
       <td class="num">${formatRupiah(emp.grand_total)}</td>
       <td>
-        ${emp._hasError ? `<span class="badge badge-error">Error</span>` : `<span class="badge badge-ok">Siap</span>`}
+        ${emp._hasError ? `<span class="badge badge-error">Error</span>` : `<span class="badge badge-ok">Berhasil</span>`}
       </td>
       <td>
         ${emp._hasError ? '-' : `<button class="btn btn-ghost btn-sm" onclick="previewEmployeePDF(${index})">👁️ Preview</button>`}
@@ -179,39 +175,26 @@ async function previewEmployeePDF(index) {
   const emp = state.employees[index];
   const periodeLabel = getPeriodeLabel(state.bulan, state.tahun);
   
-  showToast(`Mempersiapkan preview untuk ${emp.nama}...`, 'info');
+  showToast(`Mempersiapkan preview ${emp.nama}...`, 'info');
   
   try {
-    // Ambil password untuk enkripsi native
     const password = getPasswordForEmployee(emp);
-    
-    // Generate PDF dengan enkripsi NATIVE (PDFKit)
-    console.log(`[DEBUG] Generating Native Encrypted PDF for ${emp.nama}...`);
     const finalBytes = await generateSlipGajiPDF(emp, periodeLabel, password);
-    console.log("[DEBUG] Generation complete.");
     
-    // Download/Preview
     const blob = new Blob([finalBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     
-    // Buka tab baru
     const win = window.open(url, '_blank');
     if (!win) {
-      showToast('Popup diblokir! Mohon izinkan popup untuk melihat preview.', 'error');
+      showToast('Popup diblokir! Mohon izinkan popup.', 'error');
     } else {
       showToast(`Preview terbuka! Password: ${password}`, 'success');
     }
-    
-    // Kita tidak revoke URL di sini agar user bisa melihat PDF-nya
   } catch (err) {
-    console.error(err);
     showToast('Gagal generate preview: ' + err.message, 'error');
   }
 }
 
-/**
- * Generate dan download file Excel template
- */
 function downloadTemplateExcel() {
   const headers = [
     ['NO', 'NAMA', 'NIK', 'NPWP', 'STATUS', 'JABATAN', 'GAJI POKOK', 'TUNJANGAN JABATAN', 'UANG MAKAN', 'UANG TRANSPORT', 'LEMBUR', 'INSENTIF', 'LAIN-LAIN (INCOME)', 'TOTAL PENDAPATAN', 'JHT (2%)', 'PENSIUN (1%)', 'BPJS KESEHATAN (1%)', 'PINJAMAN TOTAL', 'PINJAMAN BAYAR', 'PINJAMAN SISA', 'LAIN-LAIN (POTONGAN)', 'TOTAL POTONGAN', 'GAJI BERSIH (TAKE HOME PAY)', 'PASSWORD PDF (OPTIONAL)'],
@@ -220,19 +203,16 @@ function downloadTemplateExcel() {
 
   const ws = XLSX.utils.aoa_to_sheet([
     ['TEMPLATE SLIP GAJI PT. LAMLO PHARMACY'],
-    [], // Row 1 & 2 used for padding in engine
+    [],
     headers[0],
     headers[1]
   ]);
 
-  // Set style minimal agar rapi (lebar kolom)
   ws['!cols'] = headers[0].map(() => ({ wch: 20 }));
-
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "TEMPLATE");
-
   XLSX.writeFile(wb, "Template_Slip_Gaji_Lamlo.xlsx");
-  showToast('Template Excel berhasil diunduh!', 'success');
+  showToast('Template berhasil diunduh!', 'success');
 }
 
 // ── Step 4: Generate ────────────────────────────────────────────────────────
@@ -243,11 +223,11 @@ async function startGenerate() {
 
   const progressBar  = $('progressBar');
   const progressText = $('progressText');
-  const logContainer = $('generateLog');
+  const logTbody     = $('generateLogTable');
   const downloadSection = $('downloadSection');
   const btnDownload     = $('btnDownload');
 
-  logContainer.innerHTML = '';
+  logTbody.innerHTML = '';
   downloadSection.classList.add('hidden');
   progressBar.style.width = '0%';
   progressText.textContent = `Mempersiapkan... 0 / ${employees.length}`;
@@ -256,88 +236,76 @@ async function startGenerate() {
   let done = 0;
   let hasError = false;
 
+  // Render initial pending states in the table
+  employees.forEach(emp => {
+    const password = getPasswordForEmployee(emp);
+    const tr = document.createElement('tr');
+    tr.id = `log-row-${emp.nik}`;
+    tr.innerHTML = `
+      <td>${emp.no}</td>
+      <td><strong>${emp.nama}</strong></td>
+      <td class="mono">${password}</td>
+      <td class="log-status log-pending">Menunggu...</td>
+    `;
+    logTbody.appendChild(tr);
+  });
+
   for (const emp of employees) {
+    const statusCell = document.querySelector(`#log-row-${emp.nik} .log-status`);
+    statusCell.textContent = 'Memproses...';
+    statusCell.className = 'log-status'; // Reset
+
     try {
-      // 1. Generate PDF (Native Encrypted)
       const password = getPasswordForEmployee(emp);
       const finalBytes = await generateSlipGajiPDF(emp, periodeLabel, password);
 
-      // 2. Add to ZIP
       const fileName = sanitizeFilename(`SlipGaji_${emp.nama}_${periodeSlug}.pdf`);
       zip.file(fileName, finalBytes);
 
-      logEntry(logContainer, `✅ ${emp.nama} (${emp.nik}) — password: ${password}`, 'ok');
+      statusCell.textContent = '✅ Berhasil';
+      statusCell.classList.add('log-ok');
     } catch (err) {
       hasError = true;
-      logEntry(logContainer, `❌ ${emp.nama} — ${err.message}`, 'err');
+      statusCell.textContent = '❌ Gagal';
+      statusCell.classList.add('log-err');
     }
 
     done++;
-    if (done % 10 === 0 || done === employees.length) {
-      const pct = Math.round((done / employees.length) * 100);
-      progressBar.style.width = `${pct}%`;
-      progressText.textContent = `Generating ${done} / ${employees.length}`;
-      await sleep(1); // Yield to browser to update UI
-    }
+    const pct = Math.round((done / employees.length) * 100);
+    progressBar.style.width = `${pct}%`;
+    progressText.textContent = `Progress: ${done} / ${employees.length}`;
+    
+    // Auto scroll the log table container
+    const wrapper = logTbody.closest('.table-wrapper') || logTbody.parentElement;
+    wrapper.scrollTop = wrapper.scrollHeight;
+
+    await sleep(10); // Small delay for UI smoothness
   }
 
   if (hasError) {
-    progressText.textContent = `⚠️ Selesai dengan beberapa kesalahan. Perbaiki data dan coba lagi.`;
-    downloadSection.classList.add('hidden');
-    showToast(`❌ Beberapa slip gaji gagal di-generate. Tombol download disembunyikan.`, 'error');
+    progressText.textContent = `⚠️ Selesai dengan kesalahan.`;
+    showToast(`Beberapa slip gaji gagal dibuat.`, 'error');
     return;
   }
 
-  progressText.textContent = `✅ Selesai! ${done} slip gaji berhasil di-generate.`;
+  progressText.textContent = `✅ Selesai! ${done} slip gaji siap.`;
 
-  // Generate ZIP and trigger download
-  const zipBlob = await zip.generateAsync({ 
-    type: 'blob', 
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 }
-  });
-  
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
   const zipName = sanitizeFilename(`SlipGaji_${periodeSlug}.zip`);
 
   btnDownload.onclick = () => {
-    try {
-      console.log("Triggering robust Blob download for:", zipName);
-      const url = window.URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = zipName;
-      document.body.appendChild(a);
-      
-      // Trigger the download
-      a.click();
-      
-      // Sangat Penting: Beri jeda panjang agar Chrome Download Manager selesai membaca atribut nama file
-      // sebelum referensi memori ini dihancurkan.
-      setTimeout(() => {
-        if (document.body.contains(a)) {
-          document.body.removeChild(a);
-        }
-        window.URL.revokeObjectURL(url);
-        console.log("Cleanup memori download selesai.");
-      }, 10000); // 10 detik
-
-    } catch (err) {
-      console.error("Download Error:", err);
-      alert("Gagal mendownload: " + err.message);
-    }
+    const url = window.URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = zipName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 10000);
   };
   downloadSection.classList.remove('hidden');
-
-  showToast(`🎉 ${done} slip gaji siap diunduh!`, 'success');
-}
-
-function logEntry(container, msg, type) {
-  const div = document.createElement('div');
-  div.className = `log-entry log-${type}`;
-  div.textContent = msg;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  showToast(`🎉 Slip gaji siap diunduh!`, 'success');
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -361,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initUpload();
   initPeriode();
 
-  // Wire navigation buttons
   $('btn-next-1').addEventListener('click', () => goToStep(2));
   $('btn-back-2').addEventListener('click', () => goToStep(1));
   $('btn-next-2').addEventListener('click', () => goToStep(3));
