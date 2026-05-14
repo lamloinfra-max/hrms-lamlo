@@ -2,7 +2,7 @@
 // Menggunakan enkripsi native PDFKit dengan proteksi buffer untuk stabilitas di browser.
 
 async function generateSlipGajiPDF(emp, periode, password = null) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       // 1. Inisialisasi PDFDocument dengan ENKRIPSI NATIVE
       const pdfOptions = {
@@ -45,21 +45,36 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
         }
       });
 
+      // --- MUAT LOGO ---
+      try {
+        const logoRes = await fetch('logo.png');
+        if (logoRes.ok) {
+          const logoArrayBuffer = await logoRes.arrayBuffer();
+          // Letakkan logo di pojok kiri atas
+          doc.image(logoArrayBuffer, 50, 45, { width: 55 });
+        }
+      } catch (e) {
+        console.warn("Gagal memuat logo.png, melanjutkan tanpa logo.");
+      }
+
       // --- DESIGN SLIP GAJI ---
       
-      // Header: Nama & Alamat Perusahaan
-      doc.font('Helvetica-Bold').fontSize(14).text('PT. LAMLO PHARMACY', { align: 'center' });
+      // Header: Nama & Alamat Perusahaan (Digeser ke kanan sedikit jika ada logo)
+      doc.font('Helvetica-Bold').fontSize(14).text('PT. LAMLO PHARMACY', 120, 50, { align: 'left' });
       doc.font('Helvetica').fontSize(9)
-         .text('JL. TEUKU FAKINAH NO. 07 LAM BLANG TRIENG', { align: 'center' })
-         .text('DARUL IMARAH - ACEH BESAR', { align: 'center' });
-      doc.moveDown(0.5);
+         .text('JL. TEUKU FAKINAH NO. 07 LAM BLANG TRIENG', 120, 68, { align: 'left' })
+         .text('DARUL IMARAH - ACEH BESAR', 120, 80, { align: 'left' });
+      
+      doc.y = 110; // Reset Y setelah header
       
       // Garis Pemisah Double
       doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(1.5).stroke();
       doc.moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).lineWidth(0.5).stroke();
       doc.moveDown(1.5);
 
-      doc.font('Helvetica-Bold').fontSize(12).text('SLIP GAJI KARYAWAN', { align: 'center', underline: false });
+      // Reset X ke margin kiri (50) agar align: 'center' benar-benar di tengah halaman
+      doc.x = 50; 
+      doc.font('Helvetica-Bold').fontSize(12).text('SLIP GAJI KARYAWAN', { align: 'center' });
       doc.font('Helvetica').fontSize(10).text(`Periode: ${periode}`, { align: 'center' });
       doc.moveDown(2);
 
@@ -168,11 +183,16 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       doc.moveDown(5);
       const footerY = doc.y;
       
+      // Bagian Kiri: Info Cetak
       doc.text('Dicetak pada: ' + new Date().toLocaleString('id-ID'), 50, footerY);
       
-      doc.text('Penerima,', 420, footerY);
+      // Bagian Kanan: Area Tanda Tangan (Gunakan width agar teks terpusat)
+      const signAreaWidth = 150;
+      const signAreaX = 545 - signAreaWidth; // Rata kanan halaman
+      
+      doc.text('Penerima,', signAreaX, footerY, { align: 'center', width: signAreaWidth });
       doc.moveDown(4);
-      doc.font('Helvetica-Bold').text(`( ${emp.nama} )`, 420, doc.y, { align: 'center', width: 100 });
+      doc.font('Helvetica-Bold').text(`( ${emp.nama} )`, signAreaX, doc.y, { align: 'center', width: signAreaWidth });
 
       // Finalize PDF file
       doc.end();
