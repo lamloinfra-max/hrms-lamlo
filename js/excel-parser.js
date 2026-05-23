@@ -2,7 +2,8 @@
 
 // Column indices (0-based) berdasarkan structure file "slip gaji.xlsx"
 const COL = {
-  NO: 0, NAMA: 1, NIK: 2, NPWP: 3,
+  NO: 0, NAMA: 1, NIK: 2,
+  NO_BPJSTK: 3, NO_BPJS_KES: 4,
   JABATAN: 5,
   GAJI: 6, TUNJANGAN: 7, MAKAN: 8, TRANSPORT: 9,
   LEMBUR: 10, INSENTIF: 11, LAIN_INCOME: 12, TOTAL_INCOME: 13,
@@ -59,7 +60,8 @@ function parseExcelFile(arrayBuffer) {
       no:              row[COL.NO],
       nama:            toStr(row[COL.NAMA]),
       nik:             toStr(row[COL.NIK]),
-      npwp:            toStr(row[COL.NPWP]),
+      no_bpjstk:       toStr(row[COL.NO_BPJSTK]) || '-',
+      no_bpjs_kes:     toStr(row[COL.NO_BPJS_KES]) || '-',
       jabatan:         toStr(row[COL.JABATAN]),
       gaji_pokok:      toNum(row[COL.GAJI]),
       tunjangan:       toNum(row[COL.TUNJANGAN]),

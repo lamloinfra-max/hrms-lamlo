@@ -73,7 +73,8 @@ Berdasarkan file `slip gaji.xlsx`, sheet `TEMPLATE` memiliki struktur berikut:
 | `NO` | no | Number | ✅ | Nomor urut |
 | `NAMA` | nama | String | ✅ | Nama lengkap karyawan |
 | `NIK` | nik | String | ✅ | Nomor Induk Karyawan |
-| `NPWP` | npwp | String | ❌ | Nomor Pokok Wajib Pajak |
+| `NO BPJS KETENAGAKERJAAN` | no_bpjstk | String | ❌ | Nomor kartu BPJS Ketenagakerjaan (default: `-`) |
+| `NO BPJS KESEHATAN` | no_bpjs_kes | String | ❌ | Nomor kartu BPJS Kesehatan (default: `-`) |
 | `JABATAN` | jabatan | String | ✅ | Posisi/jabatan |
 | `GAJI` | gaji_pokok | Number | ✅ | Gaji pokok |
 | `TUNJANGAN` | tunjangan | Number | ❌ | Tunjangan jabatan |

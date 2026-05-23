@@ -58,143 +58,161 @@ async function generateSlipGajiPDF(emp, periode, password = null) {
       }
 
       // --- DESIGN SLIP GAJI ---
-      
-      // Header: Nama & Alamat Perusahaan (Digeser ke kanan sedikit jika ada logo)
-      doc.font('Helvetica-Bold').fontSize(14).text('PT. LAMLO PHARMACY', 120, 50, { align: 'left' });
-      doc.font('Helvetica').fontSize(9)
-         .text('JL. TEUKU FAKINAH NO. 07 LAM BLANG TRIENG', 120, 68, { align: 'left' })
-         .text('DARUL IMARAH - ACEH BESAR', 120, 80, { align: 'left' });
-      
-      doc.y = 110; // Reset Y setelah header
-      
-      // Garis Pemisah Double
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).lineWidth(1.5).stroke();
-      doc.moveTo(50, doc.y + 2).lineTo(545, doc.y + 2).lineWidth(0.5).stroke();
-      doc.moveDown(1.5);
+      doc.fillColor('#000000');
 
-      // Reset X ke margin kiri (50) agar align: 'center' benar-benar di tengah halaman
-      doc.x = 50; 
-      doc.font('Helvetica-Bold').fontSize(12).text('SLIP GAJI KARYAWAN', { align: 'center' });
-      doc.font('Helvetica').fontSize(10).text(`Periode: ${periode}`, { align: 'center' });
-      doc.moveDown(2);
-
-      // Data Karyawan (Layout Kolom)
-      const startY = doc.y;
-      doc.fontSize(10);
+      // 1. Header & Kop Surat (Gambar 1)
+      doc.font('Helvetica-Bold').fontSize(13).text('PT. LAMLO PHARMACY', 120, 50, { align: 'left' });
+      doc.font('Helvetica').fontSize(8.5)
+         .text('JL. TEUKU FAKINAH NO. 07 LAM BLANG TRIENG', 120, 66, { align: 'left' })
+         .text('DARUL IMARAH - ACEH BESAR', 120, 76, { align: 'left' });
       
+      // Label Private & Confidential di sebelah kanan
+      doc.font('Helvetica-BoldOblique').fontSize(9.5).fillColor('#333333')
+         .text('PRIVATE & CONFIDENTIAL', 50, 50, { align: 'right', width: 495 });
+
+      // Garis Pemisah (Tebal Tunggal)
+      doc.moveTo(50, 95).lineTo(545, 95).lineWidth(1.5).strokeColor('#000000').stroke();
+
+      // 2. Sub-Header Judul Slip (Gambar 1)
+      // Judul: SLIP GAJI (Centered, Underlined)
+      doc.fillColor('#000000').font('Helvetica-Bold').fontSize(13)
+         .text('SLIP GAJI', 50, 115, { align: 'center', width: 495, underline: true });
+
+      // Periode (Mei 2026 dst.)
+      let cleanPeriode = periode;
+      if (cleanPeriode.toUpperCase().startsWith("BULAN ")) {
+        const parts = cleanPeriode.split(" ");
+        if (parts.length >= 3) {
+          const monthStr = parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase();
+          cleanPeriode = `${monthStr} ${parts[2]}`;
+        }
+      }
+      doc.font('Helvetica-Bold').fontSize(9.5)
+         .text(`Periode : ${cleanPeriode}`, 50, 134, { align: 'center', width: 495 });
+
+      // 3. Detail Karyawan 2-Kolom (Gambar 1)
       // Kolom Kiri
-      doc.font('Helvetica-Bold').text('NIK', 50, startY);
-      doc.font('Helvetica').text(`: ${emp.nik}`, 130, startY);
+      doc.font('Helvetica-Bold').fontSize(9).text('Nama', 50, 160);
+      doc.font('Helvetica').text(`: ${emp.nama}`, 100, 160);
       
-      doc.font('Helvetica-Bold').text('Nama', 50, startY + 15);
-      doc.font('Helvetica').text(`: ${emp.nama}`, 130, startY + 15);
+      doc.font('Helvetica-Bold').text('NIK', 50, 174);
+      doc.font('Helvetica').text(`: ${emp.nik}`, 100, 174);
       
+      doc.font('Helvetica-Bold').text('Jabatan', 50, 188);
+      doc.font('Helvetica').text(`: ${emp.jabatan || '-'}`, 100, 188);
+
       // Kolom Kanan
-      doc.font('Helvetica-Bold').text('Jabatan', 320, startY);
-      doc.font('Helvetica').text(`: ${emp.jabatan || '-'}`, 400, startY);
+      doc.font('Helvetica-Bold').text('No. BPJS Ketenagakerjaan', 310, 160);
+      doc.font('Helvetica').text(`: ${emp.no_bpjstk || '-'}`, 435, 160);
       
-      doc.font('Helvetica-Bold').text('Departemen', 320, startY + 15);
-      doc.font('Helvetica').text(`: ${emp.departemen || '-'}`, 400, startY + 15);
-      
-      doc.moveDown(3);
+      doc.font('Helvetica-Bold').text('No. BPJS Kesehatan', 310, 174);
+      doc.font('Helvetica').text(`: ${emp.no_bpjs_kes || '-'}`, 435, 174);
 
-      // --- TABEL PENDAPATAN & POTONGAN ---
-      const tableTop = doc.y;
-      const col1 = 60;
-      const col2 = 400;
-      
-      // Header Tabel
-      doc.rect(50, tableTop, 495, 20).fill('#f5f5f5').stroke('#cccccc');
-      doc.fillColor('black').font('Helvetica-Bold').text('DESKRIPSI', col1, tableTop + 6);
-      doc.text('JUMLAH (IDR)', col2, tableTop + 6, { align: 'right', width: 135 });
+      // 4. Rincian Gaji Vertikal Bertumpuk - Option A Static (Gambar 2)
+      let currentY = 215;
 
-      let currentY = tableTop + 28;
-      doc.font('Helvetica');
-      
-      const formatRupiah = (num) => {
-        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
-      };
+      // --- SUB-TABEL PENDAPATAN ---
+      // Header Pendapatan
+      doc.rect(50, currentY, 495, 18).fill('#f5f5f5').stroke('#000000');
+      doc.fillColor('#000000').font('Helvetica-Bold').fontSize(9);
+      doc.text('RINCIAN PENDAPATAN', 60, currentY + 5);
+      doc.text('JUMLAH (IDR)', 400, currentY + 5, { align: 'right', width: 135 });
 
-      // 1. PENDAPATAN
-      doc.font('Helvetica-Bold').text('PENDAPATAN', col1, currentY);
       currentY += 18;
-      doc.font('Helvetica');
-
+      
       const incomeItems = [
         { label: 'Gaji Pokok', value: emp.gaji_pokok },
-        { label: 'Tunjangan Tetap', value: emp.tunjangan },
+        { label: 'Tunjangan Jabatan', value: emp.tunjangan },
         { label: 'Uang Makan', value: emp.uang_makan },
         { label: 'Uang Transport', value: emp.uang_transport },
         { label: 'Lembur', value: emp.lembur },
-        { label: 'Insentif / Bonus', value: emp.insentif },
-        { label: 'Pendapatan Lain-lain', value: emp.lain_income }
+        { label: 'Insentif', value: emp.insentif },
+        { label: 'Lain-lain', value: emp.lain_income }
       ];
 
+      doc.font('Helvetica').fontSize(9);
       incomeItems.forEach(item => {
-        if (item.value > 0) {
-          doc.text(item.label, col1 + 10, currentY);
-          doc.text(formatRupiah(item.value), col2, currentY, { align: 'right', width: 135 });
-          currentY += 15;
-        }
+        currentY += 4;
+        doc.text(item.label, 60, currentY);
+        doc.text(formatRupiahIncome(item.value), 400, currentY, { align: 'right', width: 135 });
+        currentY += 11;
       });
 
-      // Subtotal Pendapatan
-      doc.moveTo(col1, currentY + 5).lineTo(545, currentY + 5).lineWidth(0.5).stroke('#dddddd');
-      currentY += 12;
-      doc.font('Helvetica-Bold').text('Total Pendapatan (A)', col1, currentY);
-      doc.text(formatRupiah(emp.total_income), col2, currentY, { align: 'right', width: 135 });
-      currentY += 25;
+      // Total Pendapatan
+      currentY += 4;
+      doc.moveTo(50, currentY).lineTo(545, currentY).lineWidth(0.5).strokeColor('#000000').stroke();
+      
+      currentY += 4;
+      doc.font('Helvetica-Bold').fontSize(9).text('Total Pendapatan', 60, currentY);
+      doc.text(formatRupiahIncome(emp.total_income), 400, currentY, { align: 'right', width: 135 });
 
-      // 2. POTONGAN
-      doc.font('Helvetica-Bold').text('POTONGAN', col1, currentY);
+      currentY += 15;
+
+      // --- SUB-TABEL POTONGAN ---
+      currentY += 12;
+
+      // Header Potongan
+      doc.rect(50, currentY, 495, 18).fill('#f5f5f5').stroke('#000000');
+      doc.fillColor('#000000').font('Helvetica-Bold').fontSize(9);
+      doc.text('RINCIAN POTONGAN', 60, currentY + 5);
+      doc.text('JUMLAH (IDR)', 400, currentY + 5, { align: 'right', width: 135 });
+
       currentY += 18;
-      doc.font('Helvetica');
 
       const bpjsTK = (emp.jht || 0) + (emp.pensiun || 0);
       const deductItems = [
-        { label: 'BPJS Kesehatan', value: emp.bpjs_kes },
         { label: 'BPJS Ketenagakerjaan', value: bpjsTK },
+        { label: 'BPJS Kesehatan', value: emp.bpjs_kes },
         { label: 'Angsuran Pinjaman', value: emp.pinjaman_bayar },
-        { label: 'Potongan Lain-lain', value: emp.lain_deduct }
+        { label: 'Lain-lain', value: emp.lain_deduct }
       ];
 
+      doc.font('Helvetica').fontSize(9);
       deductItems.forEach(item => {
-        if (item.value > 0) {
-          doc.text(item.label, col1 + 10, currentY);
-          doc.text(`(${formatRupiah(item.value)})`, col2, currentY, { align: 'right', width: 135 });
-          currentY += 15;
-        }
+        currentY += 4;
+        doc.text(item.label, 60, currentY);
+        doc.text(formatRupiahDeduct(item.value), 400, currentY, { align: 'right', width: 135 });
+        currentY += 11;
       });
 
-      // Subtotal Potongan
-      doc.moveTo(col1, currentY + 5).lineTo(545, currentY + 5).lineWidth(0.5).stroke('#dddddd');
-      currentY += 12;
-      doc.font('Helvetica-Bold').text('Total Potongan (B)', col1, currentY);
-      doc.text(`(${formatRupiah(emp.total_deduct)})`, col2, currentY, { align: 'right', width: 135 });
-      currentY += 30;
+      // Total Potongan
+      currentY += 4;
+      doc.moveTo(50, currentY).lineTo(545, currentY).lineWidth(0.5).strokeColor('#000000').stroke();
 
-      // --- GRAND TOTAL ---
-      doc.rect(50, currentY, 495, 30).fill('#e8f5e9').stroke('#2e7d32');
-      doc.fillColor('#1b5e20').font('Helvetica-Bold').fontSize(11).text('TAKE HOME PAY (A - B)', col1, currentY + 10);
-      doc.text(formatRupiah(emp.grand_total), col2, currentY + 10, { align: 'right', width: 135 });
+      currentY += 4;
+      doc.font('Helvetica-Bold').fontSize(9).text('Total Potongan', 60, currentY);
+      doc.text(formatRupiahDeduct(emp.total_deduct), 400, currentY, { align: 'right', width: 135 });
 
-      // Footer: Tanda Tangan
-      doc.fillColor('black').fontSize(9).font('Helvetica');
-      doc.moveDown(5);
-      const footerY = doc.y;
-      
-      // Bagian Kiri: Info Cetak
-      doc.text('Dicetak pada: ' + new Date().toLocaleString('id-ID'), 50, footerY);
-      
-      // Bagian Kanan: Area Tanda Tangan (Gunakan width agar teks terpusat)
-      const signAreaWidth = 150;
-      const signAreaX = 545 - signAreaWidth; // Rata kanan halaman
-      
-      doc.text('Penerima,', signAreaX, footerY, { align: 'center', width: signAreaWidth });
-      doc.moveDown(4);
-      doc.font('Helvetica-Bold').text(`( ${emp.nama} )`, signAreaX, doc.y, { align: 'center', width: signAreaWidth });
+      currentY += 15;
 
-      // Finalize PDF file
+      // 5. Kotak Gaji Diterima (Gambar 3)
+      currentY += 20;
+      doc.rect(50, currentY, 495, 60).lineWidth(1.5).strokeColor('#000000').stroke();
+      
+      doc.fillColor('#000000');
+      doc.font('Helvetica-Bold').fontSize(9).text('GAJI YANG DITERIMA', 50, currentY + 8, { align: 'center', width: 495 });
+      doc.font('Helvetica-Bold').fontSize(14).text(formatRupiahIncome(emp.grand_total), 50, currentY + 22, { align: 'center', width: 495 });
+      doc.font('Helvetica-Oblique').fontSize(8.5).text(formatTerbilang(emp.grand_total), 50, currentY + 42, { align: 'center', width: 495 });
+
+      currentY += 60;
+
+      // 6. Tanda Tangan Direktur Terpusat (Gambar 3)
+      currentY += 35;
+      doc.font('Helvetica-Bold').fontSize(9).text('PT. LAMLO PHARMACY', 50, currentY, { align: 'center', width: 495 });
+      currentY += 60;
+      doc.font('Helvetica-Bold').fontSize(9).text('DIREKTUR', 50, currentY, { align: 'center', width: 495 });
+
+      // 7. Catatan Kaki (Footnote) dan Waktu Cetak di Bagian Bawah
+      const bottomY = 800;
+      doc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#555555');
+      doc.text('Slip gaji ini dibuat secara otomatis oleh sistem dan sah tanpa tanda tangan.', 50, bottomY, { align: 'left', width: 300 });
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+      doc.text(`Dicetak pada : ${dateStr} | ${timeStr} WIB`, 300, bottomY, { align: 'right', width: 245 });
+
+      // Finalisasi Dokumen PDF
       doc.end();
 
     } catch (err) {

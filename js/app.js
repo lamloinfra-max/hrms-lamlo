@@ -197,8 +197,8 @@ async function previewEmployeePDF(index) {
 
 function downloadTemplateExcel() {
   const headers = [
-    ['NO', 'NAMA', 'NIK', 'NPWP', 'STATUS', 'JABATAN', 'GAJI POKOK', 'TUNJANGAN JABATAN', 'UANG MAKAN', 'UANG TRANSPORT', 'LEMBUR', 'INSENTIF', 'LAIN-LAIN (INCOME)', 'TOTAL PENDAPATAN', 'JHT (2%)', 'PENSIUN (1%)', 'BPJS KESEHATAN (1%)', 'PINJAMAN TOTAL', 'PINJAMAN BAYAR', 'PINJAMAN SISA', 'LAIN-LAIN (POTONGAN)', 'TOTAL POTONGAN', 'GAJI BERSIH (TAKE HOME PAY)', 'PASSWORD PDF (OPTIONAL)'],
-    ['1', 'Adit Suryadi', '1234567890', '987654321', 'Tetap', 'IT Manager', 5000000, 1000000, 500000, 500000, 0, 200000, 0, 7200000, 100000, 50000, 50000, 0, 0, 0, 0, 200000, 7000000, 'adit123']
+    ['NO', 'NAMA', 'NIK', 'NO BPJS KETENAGAKERJAAN', 'NO BPJS KESEHATAN', 'JABATAN', 'GAJI POKOK', 'TUNJANGAN JABATAN', 'UANG MAKAN', 'UANG TRANSPORT', 'LEMBUR', 'INSENTIF', 'LAIN-LAIN (INCOME)', 'TOTAL PENDAPATAN', 'BPJSTK - JHT (2%)', 'BPJSTK - PENSIUNAN (1%)', 'BPJS KESEHATAN (1%)', 'PINJAMAN TOTAL', 'PINJAMAN BAYAR', 'PINJAMAN SISA', 'LAIN-LAIN (POTONGAN)', 'TOTAL POTONGAN', 'GAJI BERSIH (TAKE HOME PAY)', 'PASSWORD PDF (OPTIONAL)'],
+    ['1', 'Adit Suryadi', '1234567890', '00012345678', '00009876543', 'IT Manager', 5000000, 1000000, 500000, 500000, 0, 200000, 0, 7200000, 100000, 50000, 50000, 0, 0, 0, 0, 200000, 7000000, 'adit123']
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([
@@ -208,7 +208,7 @@ function downloadTemplateExcel() {
     headers[1]
   ]);
 
-  ws['!cols'] = headers[0].map(() => ({ wch: 20 }));
+  ws['!cols'] = headers[0].map(() => ({ wch: 22 }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "TEMPLATE");
   XLSX.writeFile(wb, "Template_Slip_Gaji_Lamlo.xlsx");
