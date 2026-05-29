@@ -34,21 +34,21 @@ function terbilang(angka) {
   } else if (angka < 20) {
     temp = terbilang(angka - 10) + " Belas";
   } else if (angka < 100) {
-    temp = terbilang(Math.floor(angka / 10)) + " Puluh" + terbilang(angka % 10);
+    temp = terbilang(Math.floor(angka / 10)) + " Puluh " + terbilang(angka % 10);
   } else if (angka < 200) {
-    temp = " Seratus" + terbilang(angka - 100);
+    temp = " Seratus " + terbilang(angka - 100);
   } else if (angka < 1000) {
-    temp = terbilang(Math.floor(angka / 100)) + " Ratus" + terbilang(angka % 100);
+    temp = terbilang(Math.floor(angka / 100)) + " Ratus " + terbilang(angka % 100);
   } else if (angka < 2000) {
-    temp = " Seribu" + terbilang(angka - 1000);
+    temp = " Seribu " + terbilang(angka - 1000);
   } else if (angka < 1000000) {
-    temp = terbilang(Math.floor(angka / 1000)) + " Ribu" + terbilang(angka % 1000);
+    temp = terbilang(Math.floor(angka / 1000)) + " Ribu " + terbilang(angka % 1000);
   } else if (angka < 1000000000) {
-    temp = terbilang(Math.floor(angka / 1000000)) + " Juta" + terbilang(angka % 1000000);
+    temp = terbilang(Math.floor(angka / 1000000)) + " Juta " + terbilang(angka % 1000000);
   } else if (angka < 1000000000000) {
-    temp = terbilang(Math.floor(angka / 1000000000)) + " Milyar" + terbilang(angka % 1000000000);
+    temp = terbilang(Math.floor(angka / 1000000000)) + " Milyar " + terbilang(angka % 1000000000);
   }
-  return temp.trim();
+  return temp.trim().replace(/\s+/g, ' ');
 }
 
 function formatTerbilang(angka) {
